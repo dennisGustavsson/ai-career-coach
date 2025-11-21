@@ -11,25 +11,33 @@ export default function Home() {
 	const [cvAnalysis, setCvAnalysis] = useState<any>(null);
 	const [query, setQuery] = useState("");
 	const [jobs, setJobs] = useState<any[]>([]);
+	const [page, setPage] = useState<number>(1);
+	const [perPage] = useState<number>(10);
+	const [pagination, setPagination] = useState<any | null>(null);
 	const [isSearching, setIsSearching] = useState(false);
 	const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 	const [matchResult, setMatchResult] = useState<any>(null);
 	const [isMatching, setIsMatching] = useState(false);
 	const [remainingMatches, setRemainingMatches] = useState<number | null>(null);
 
-	const handleSearch = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!query.trim()) return;
-
+	const runSearch = async (q: string, p: number) => {
 		setIsSearching(true);
 		try {
-			const results = await searchJobs(query);
+			const results = await searchJobs(q, { page: p, perPage });
 			setJobs(results.hits || []);
+			setPagination(results.pagination || null);
 		} catch (err) {
 			console.error(err);
 		} finally {
 			setIsSearching(false);
 		}
+	};
+
+	const handleSearch = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!query.trim()) return;
+		setPage(1);
+		await runSearch(query, 1);
 	};
 
 	const handleMatch = async (jobId: string) => {
@@ -166,6 +174,42 @@ export default function Home() {
 									<p className='text-center text-gray-500 py-8'>
 										Inga jobb hittades.
 									</p>
+								)}
+								{pagination && (
+									<div className='flex items-center justify-between pt-4 border-t border-gray-200'>
+										<div className='text-sm text-gray-600'>
+											Sida {pagination.page} av {pagination.total_pages}
+										</div>
+										<div className='flex gap-2'>
+											<button
+												type='button'
+												disabled={!pagination.has_prev || isSearching}
+												onClick={async () => {
+													const nextPage = Math.max(
+														1,
+														(pagination.page || page) - 1
+													);
+													setPage(nextPage);
+													await runSearch(query, nextPage);
+												}}
+												className='px-4 py-2 rounded-full border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
+											>
+												Föregående
+											</button>
+											<button
+												type='button'
+												disabled={!pagination.has_next || isSearching}
+												onClick={async () => {
+													const nextPage = (pagination.page || page) + 1;
+													setPage(nextPage);
+													await runSearch(query, nextPage);
+												}}
+												className='px-4 py-2 rounded-full bg-linear-to-r from-green-500 to-cyan-500 text-white font-semibold hover:from-green-600 hover:to-cyan-600 disabled:opacity-50'
+											>
+												Nästa
+											</button>
+										</div>
+									</div>
 								)}
 							</div>
 						</section>

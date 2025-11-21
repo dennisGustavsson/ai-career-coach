@@ -52,11 +52,23 @@ async def analyze_cv(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {error_msg}")
 
 @router.get("/search-jobs")
-def search_jobs(q: str, offset: int = 0, limit: int = 10):
+def search_jobs(q: str, offset: int = 0, limit: int = 10, page: int | None = None, per_page: int | None = None):
+    """Search jobs with support for offset/limit or page/per_page.
+
+    - If page/per_page are provided and valid (>0), they take precedence
+      and are converted to offset/limit internally.
+    - Otherwise falls back to offset/limit.
+    """
     # Validate inputs
     query = validate_search_query(q)
-    offset, limit = validate_pagination(offset, limit)
-    
+
+    # Prefer page/per_page if provided
+    if page is not None and per_page is not None and page > 0 and per_page > 0:
+        computed_offset = (page - 1) * per_page
+        offset, limit = validate_pagination(computed_offset, per_page)
+    else:
+        offset, limit = validate_pagination(offset, limit)
+
     return af_service.search_jobs(query, offset, limit)
 
 @router.post("/match")
